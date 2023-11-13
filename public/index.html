@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+      integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N"
+      crossorigin="anonymous"
+    />
+
+    <title>Healing Yuk</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row justify-content-center mt-3">
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header">Healing Yuk by <a target="_blank" href="https://www.instagram.com/rezamfis/">Fahreza Isnanto</a></div>
+            <div class="card-body">
+              <h5 class="card-title">
+                Temukan 10 tempat healing terdekat Anda
+              </h5>
+              <p class="card-text">
+                sebelum melakukan pencarian silahkan tekan tombol berikut secara
+                urut. izin notifikasi, izin lokasi, dan temukan 10 tempat
+                terdekat.
+              </p>
+              <a href="#" class="btn btn-secondary mb-2" onclick="izinNotifikasi()"
+                >Izin Notifikasi</a
+              >
+              <a href="#" class="btn btn-info mb-2" onclick="izinLokasi()"
+                >Izin Lokasi</a
+              >
+              <a
+                href="#"
+                class="btn btn-primary mb-2"
+                onclick="fetchTenNearestPlace()"
+                >10 Tempat Terdekat</a
+              >
+            </div>
+          </div>
+
+          <table class="table mt-3 table-ten-nearest-place">
+            <thead class="thead-light">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Nama Tempat</th>
+                <th scope="col">Kategori</th>
+                <th scope="col">Kota</th>
+                <th scope="col">Harga</th>
+                <th scope="col">Rating</th>
+              </tr>
+            </thead>
+            <tbody class="wrapper-ten-nearest-place">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://www.gstatic.com/firebasejs/8.4.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.16.1/firebase-messaging.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+      var firebaseConfig = {
+        apiKey: "AIzaSyCy6iUP6rKv3YrEvVt7asCwS4GVl1mkOms",
+        authDomain: "fahrezaisnantodev.firebaseapp.com",
+        projectId: "fahrezaisnantodev",
+        storageBucket: "fahrezaisnantodev.appspot.com",
+        messagingSenderId: "761298211868",
+        appId: "1:761298211868:web:0077941de3da043c1ffbd9",
+        measurementId: "G-KJTQGZJ0C4",
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      const messaging = firebase.messaging();
+
+      function izinNotifikasi() {
+        messaging
+          .requestPermission()
+          .then(function () {
+            Swal.fire({
+              title: "Berhasil!",
+              text: "Yee berhasil memberi izin notifikasi!",
+              icon: "success",
+            });
+            console.log("Notification permission granted.");
+
+            // get the token in the form of promise
+            return messaging.getToken();
+          })
+          .then(function (token) {
+            localStorage.setItem("devicetoken", token);
+          })
+          .catch(function (err) {
+            Swal.fire({
+              icon: "error",
+              title: "Error...",
+              text: "Pastikkan untuk mengizinkan notifikasi ya",
+            });
+          });
+      }
+
+      function izinLokasi() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(showPosition);
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Error...",
+            text: "Maaf geolocation tidak disupport pada perangkat browser ini",
+          });
+          console.log("Geolocation is not supported by this browser.");
+        }
+      }
+
+      function showPosition(position) {
+        localStorage.setItem("lat", position.coords.latitude);
+        localStorage.setItem("lon", position.coords.longitude);
+        Swal.fire({
+          title: "Berhasil!",
+          text: "Yee berhasil memberi izin lokasi!",
+          icon: "success",
+        });
+        console.log("Location permission granted.");
+      }
+
+      function fetchTenNearestPlace() {
+        const devicetoken = localStorage.getItem("devicetoken");
+        const lat = localStorage.getItem("lat");
+        const lon = localStorage.getItem("lon");
+
+        if (!devicetoken) {
+          Swal.fire({
+            icon: "error",
+            title: "Error...",
+            text: "Notifikasi devicetoken belum terdeteksi, silahkan tekan ulang izin notifikasi!",
+          });
+          return;
+        }
+        if (!lat) {
+          Swal.fire({
+            icon: "error",
+            title: "Error...",
+            text: "Lokasi latitude belum terdeteksi, silahkan tekan ulang izin lokasi!",
+          });
+          return;
+        }
+        if (!lon) {
+          Swal.fire({
+            icon: "error",
+            title: "Error...",
+            text: "Lokasi longitude belum terdeteksi, silahkan tekan ulang izin lokasi!",
+          });
+          return;
+        }
+
+        hideTableTenNearestPlace();
+        Swal.showLoading();
+        fetch(
+          `https://capstone-backend-rtfpcq2a4a-et.a.run.app/ml/tennearestplace?devicetoken=${devicetoken}&lat=${lat}&lon=${lon}`,
+          {
+            mode: "no-cors",
+          }
+        ).then(function () {
+          Swal.hideLoading();
+          Swal.fire({
+            title: "Berhasil!",
+            text: "Tunggu dulu, jangan pergi ya, 10 rekomendasi tempat healing terdekat Anda akan segera kami kabari!",
+            icon: "success",
+          });
+        });
+      }
+      
+      messaging.onMessage(function (payload) {
+        console.log("Message received. ", payload);
+        const strTenNearestPlace = payload.data.tenNearestPlace;
+        const tenNearestPlace = JSON.parse(strTenNearestPlace);
+        
+        if(tenNearestPlace){
+            $('.wrapper-ten-nearest-place').html('');
+            tenNearestPlace.forEach((value,i) => {
+                const no = i+1;
+                $('.wrapper-ten-nearest-place').append(
+                    `<tr>
+                        <th scope="row">${no}</th>
+                        <td>${value.Place_Name}</td>
+                        <td>${value.Category}</td>
+                        <td>${value.City}</td>
+                        <td>${value.Price}</td>
+                        <td>${value.Rating}</td>
+                    </tr>`
+                )
+            });
+            showTableTenNearestPlace();
+            Swal.fire({
+                title: "Berhasil!",
+                text: "Yeay, berhasil mendapatkan tempat healing terdekat dengan Anda",
+                icon: "success",
+            });
+        }else{
+            Swal.fire({
+                icon: "error",
+                title: "Error...",
+                text: "Yah tempat healing gak tersedia gaes",
+            });
+        }
+      });
+
+      function showTableTenNearestPlace(){
+        $('.table-ten-nearest-place').show();
+      }
+
+      function hideTableTenNearestPlace(){
+        $('.table-ten-nearest-place').hide();
+      }
+
+      hideTableTenNearestPlace();
+    </script>
+  </body>
+</html>
